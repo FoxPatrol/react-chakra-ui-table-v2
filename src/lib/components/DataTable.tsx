@@ -30,6 +30,11 @@ import {
   Spinner,
   CheckboxGroup,
   Tooltip,
+  InputGroup,
+  InputLeftAddon,
+  InputRightAddon,
+  useMediaQuery,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import {
   ArrowBackIcon,
@@ -73,7 +78,7 @@ import jsPDF from "jspdf";
 import "jspdf-autotable";
 import { mkConfig, generateCsv, download } from "export-to-csv";
 import XLSX from "xlsx";
-import { Dispatch, SetStateAction, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 import { getNumformat } from "../utils/formatters";
 import { SingleDatepicker } from "chakra-dayzed-datepicker";
 import ReactDOMServer from "react-dom/server";
@@ -177,6 +182,8 @@ export function DataTable<Data extends object>({
     defaultIsOpen: filterIsOpen,
   });
 
+  const [isMobile] = useMediaQuery("(max-width: 480px)");
+
   const table = useReactTable({
     columns,
     data: data || [],
@@ -232,6 +239,25 @@ export function DataTable<Data extends object>({
     );
   }, [table]);
 
+  const [inputPage, setInputPage] = useState<number>(
+    table.getState().pagination.pageIndex + 1
+  );
+  useEffect(() => {
+    setInputPage(table.getState().pagination.pageIndex + 1);
+  }, [table.getState().pagination.pageIndex]);
+  function handlePageInput(value: number) {
+    let page = value;
+
+    // If input is empty, set to page 1
+    if (!value || isNaN(page)) {
+      page = 1;
+    }
+
+    // Constrain page number between 1 and max pages
+    page = Math.max(1, Math.min(page, table.getPageCount()));
+    table.setPageIndex(page - 1);
+  }
+
   return (
     <Flex direction="column" w="full">
       <TableController
@@ -241,7 +267,7 @@ export function DataTable<Data extends object>({
         setColumnFilters={setColumnFilters}
       />
       <TableContainer w="full" whiteSpace="normal">
-        <CKTable size="sm" variant="striped">
+        <CKTable size={["xs", "sm"]} variant="striped">
           <Thead>
             {table.getHeaderGroups().map((headerGroup, hgIndex) => {
               return (
@@ -258,6 +284,7 @@ export function DataTable<Data extends object>({
                         <Flex
                           direction="row"
                           justify="space-between"
+                          alignItems="center"
                           gap="0.5rem"
                         >
                           <HStack
@@ -265,9 +292,9 @@ export function DataTable<Data extends object>({
                             cursor="pointer"
                             gap="0.5rem"
                             w="full"
-                            h="2rem"
+                            h="full"
                           >
-                            <Text>
+                            <Text fontSize={["sm", "md"]}>
                               {flexRender(
                                 header.column.columnDef.header,
                                 header.getContext()
@@ -280,9 +307,15 @@ export function DataTable<Data extends object>({
                             >
                               {header.column.getIsSorted() &&
                                 (header.column.getIsSorted() === "desc" ? (
-                                  <TriangleDownIcon aria-label="sorted descending" />
+                                  <TriangleDownIcon
+                                    aria-label="sorted descending"
+                                    fontSize={["sm", "md"]}
+                                  />
                                 ) : (
-                                  <TriangleUpIcon aria-label="sorted ascending" />
+                                  <TriangleUpIcon
+                                    aria-label="sorted ascending"
+                                    fontSize={["sm", "md"]}
+                                  />
                                 ))}
                             </Box>
                           </HStack>
@@ -312,9 +345,8 @@ export function DataTable<Data extends object>({
                                         ? "gray"
                                         : "orange"
                                     }
-                                    fontSize="1rem"
+                                    fontSize={["sm", "md"]}
                                     aria-label="column filter"
-                                    size="sm"
                                   />
                                   <MenuList p="0.5rem">
                                     <Flex
@@ -334,7 +366,7 @@ export function DataTable<Data extends object>({
                                         rightIcon={<FaTrash />}
                                         colorScheme="blue"
                                         variant="ghost"
-                                        size="sm"
+                                        size={["xs", "sm"]}
                                         onClick={() =>
                                           header.column.setFilterValue(
                                             undefined
@@ -428,39 +460,59 @@ export function DataTable<Data extends object>({
               </Tr>
             ))}
             <Tr>
-              <Td colSpan={countMaxColumns}>
-                <Flex w="full">
-                  <HStack>
+              <Td colSpan={countMaxColumns} p={["0.25em", "1em"]}>
+                <Flex
+                  w="full"
+                  justify="space-between"
+                  gap={["0.25em", "0.5em"]}
+                >
+                  <HStack gap={["0.25em", "0.5em"]}>
                     <Button
-                      size="sm"
+                      size={["xs", "sm"]}
                       onClick={() => table.setPageIndex(0)}
                       isDisabled={!table.getCanPreviousPage()}
                     >
                       <ArrowBackIcon />
                     </Button>
                     <Button
-                      size="sm"
+                      size={["xs", "sm"]}
                       onClick={() => table.previousPage()}
                       isDisabled={!table.getCanPreviousPage()}
                     >
                       <ChevronLeftIcon />
                     </Button>
-                    <HStack minW="fit-content" justify="center">
-                      <Text>
-                        {`Page ${
-                          table.getState().pagination.pageIndex + 1
-                        } / ${table.getPageCount()}`}
-                      </Text>
-                    </HStack>
+                    <InputGroup size={["xs", "sm"]} w="auto">
+                      {!isMobile && (
+                        <InputLeftAddon w="fit-content">Page</InputLeftAddon>
+                      )}
+                      <Input
+                        type="number"
+                        min={1}
+                        max={table.getPageCount()}
+                        value={inputPage}
+                        onChange={(e) => setInputPage(+e.target.value)}
+                        onBlur={(e) => handlePageInput(+e.target.value)}
+                        onKeyDown={(e: any) => {
+                          if (e.key === "Enter") {
+                            e.target.blur();
+                          }
+                        }}
+                        size={["xs", "sm"]}
+                        maxW="4em"
+                      />
+                      <InputRightAddon w="fit-content">
+                        / {table.getPageCount()}
+                      </InputRightAddon>
+                    </InputGroup>
                     <Button
-                      size="sm"
+                      size={["xs", "sm"]}
                       onClick={() => table.nextPage()}
                       isDisabled={!table.getCanNextPage()}
                     >
                       <ChevronRightIcon />
                     </Button>
                     <Button
-                      size="sm"
+                      size={["xs", "sm"]}
                       onClick={() =>
                         table.setPageIndex(table.getPageCount() - 1)
                       }
@@ -469,26 +521,12 @@ export function DataTable<Data extends object>({
                       <ArrowForwardIcon />
                     </Button>
                   </HStack>
-                  <HStack ml={4}>
-                    <Text minW="fit-content">Go To : </Text>
-                    <Input
-                      type="number"
-                      defaultValue={table.getState().pagination.pageIndex + 1}
-                      onChange={(e) => {
-                        const page = e.target.value
-                          ? Number(e.target.value) - 1
-                          : 0;
-                        table.setPageIndex(page);
-                      }}
-                      size="sm"
-                    />
-                  </HStack>
                   <Spacer />
                   <Flex justify="end">
                     <Select
                       minW="fit-content"
                       value={table.getState().pagination.pageSize}
-                      size="sm"
+                      size={["xs", "sm"]}
                       onChange={(e) => {
                         table.setPageSize(Number(e.target.value));
                         onChangePageSize(Number(e.target.value) as PageSize);
@@ -496,7 +534,7 @@ export function DataTable<Data extends object>({
                     >
                       {DEFAULT_PAGES.map((pageSize, index) => (
                         <option key={`page-${index}`} value={pageSize}>
-                          Show {pageSize} rows
+                          {!isMobile && "Show"} {pageSize} rows
                         </option>
                       ))}
                     </Select>
@@ -656,7 +694,13 @@ function TableController<Data extends object>({
   }
 
   return (
-    <Flex w="full" mb={2} px={2} align="center" direction="column">
+    <Flex
+      w="full"
+      mb={2}
+      px={["0em", "0.5em"]}
+      align="center"
+      direction="column"
+    >
       <Flex w="full">
         <Heading fontSize="md">
           <Icon as={HamburgerIcon} mr={2} />
@@ -664,7 +708,7 @@ function TableController<Data extends object>({
         </Heading>
       </Flex>
       <Flex w="full" align="center">
-        <Text color="gray.500">
+        <Text color="gray.500" fontSize={["sm", "md"]}>
           Result found{" "}
           {getNumformat(table.getPrePaginationRowModel().rows.length)} record
           {table.getPrePaginationRowModel().rows.length !== 1 && "s"}
@@ -687,6 +731,8 @@ function TableController<Data extends object>({
         <HStack align="center">
           {filterDisclosure && (
             <IconButton
+              size={useBreakpointValue(["sm", "md"])}
+              aspectRatio={1}
               icon={<GoFilter />}
               variant="ghost"
               aria-label="toggle filter"
@@ -701,6 +747,8 @@ function TableController<Data extends object>({
           )}
           <Menu closeOnSelect={false}>
             <MenuButton
+              size={useBreakpointValue(["sm", "md"])}
+              aspectRatio={1}
               as={IconButton}
               icon={<GoTasklist />}
               variant="ghost"
@@ -735,6 +783,8 @@ function TableController<Data extends object>({
           </Menu>
           <Menu closeOnSelect={false}>
             <MenuButton
+              size={useBreakpointValue(["sm", "md"])}
+              aspectRatio={1}
               as={IconButton}
               icon={<GoLinkExternal />}
               variant="ghost"
@@ -849,7 +899,7 @@ const Filter = ({ column, table }: FilterProps) => {
         <HStack w="full" spacing={1}>
           <Input
             type="number"
-            size="sm"
+            size={["xs", "sm"]}
             min={Number(
               column.getFacetedMinMaxValues()?.[0] !== undefined &&
                 column.getFacetedMinMaxValues()?.[0] !== null
@@ -878,7 +928,7 @@ const Filter = ({ column, table }: FilterProps) => {
           />
           <Input
             type="number"
-            size="sm"
+            size={["xs", "sm"]}
             min={Number(
               column.getFacetedMinMaxValues()?.[0] !== undefined &&
                 column.getFacetedMinMaxValues()?.[0] !== null
@@ -959,7 +1009,7 @@ const Filter = ({ column, table }: FilterProps) => {
           <Select
             id={column.id + "list"}
             placeholder={`select... (${customFacets.size})`}
-            size="sm"
+            size={["xs", "sm"]}
             onChange={(e) => {
               column.setFilterValue(
                 !e.target.value ? undefined : e.target.value === "true"
@@ -986,7 +1036,7 @@ const Filter = ({ column, table }: FilterProps) => {
           <Select
             id={column.id + "list"}
             placeholder={`select... (${customFacets.size})`}
-            size="sm"
+            size={["xs", "sm"]}
             onChange={(e) => column.setFilterValue(e.target.value)}
             value={(column.getFilterValue() as string | number) || ""}
           >
@@ -1048,7 +1098,7 @@ const Filter = ({ column, table }: FilterProps) => {
         <Flex w="full">
           <Input
             type="text"
-            size="sm"
+            size={["xs", "sm"]}
             value={(columnFilterValue ?? "") as string}
             onChange={(e) => column.setFilterValue(e.target.value)}
             placeholder={`find...`}
@@ -1062,7 +1112,7 @@ const Filter = ({ column, table }: FilterProps) => {
         <Flex w="full">
           <Input
             type="text"
-            size="sm"
+            size={["xs", "sm"]}
             value={(columnFilterValue ?? "") as string}
             onChange={(e) => column.setFilterValue(e.target.value)}
             placeholder={`find...`}
