@@ -155,6 +155,7 @@ export type DataTableProps<Data extends object> = {
   onSortingChange?: (filters: SortingState) => void;
   onColumnVisibilityChange?: (filters: VisibilityState) => void;
   onColumnFiltersChange?: (filters: ColumnFiltersState) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 };
 
 export function DataTable<Data extends object>({
@@ -173,6 +174,7 @@ export function DataTable<Data extends object>({
   onSortingChange,
   onColumnVisibilityChange,
   onColumnFiltersChange,
+  onPageSizeChange,
 }: DataTableProps<Data>) {
   const [sorting, setSorting] = useState<SortingState>(initialSortingState);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
@@ -268,6 +270,12 @@ export function DataTable<Data extends object>({
       table.setPageIndex(pageIndexControl);
     }
   }, [pageIndexControl, table]);
+
+  useEffect(() => {
+    if (onPageSizeChange) {
+      onPageSizeChange(table.getState().pagination.pageSize);
+    }
+  }, [table.getState().pagination.pageSize]);
 
   return (
     <Flex direction="column" w="full">
