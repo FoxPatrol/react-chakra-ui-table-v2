@@ -150,6 +150,7 @@ export type DataTableProps<Data extends object> = {
   initialColumnFilters?: ColumnFiltersState;
   initialPageSize?: PageSize;
   filterIsOpen?: boolean;
+  pageIndexControl?: number;
   onChangePageSize?: (newPageSize: PageSize) => void;
   onSortingChange?: (filters: SortingState) => void;
   onColumnVisibilityChange?: (filters: VisibilityState) => void;
@@ -167,6 +168,7 @@ export function DataTable<Data extends object>({
   initialColumnFilters = [],
   initialPageSize = DEFAULT_PAGES[1],
   filterIsOpen = false,
+  pageIndexControl = undefined,
   onChangePageSize = () => {},
   onSortingChange,
   onColumnVisibilityChange,
@@ -257,6 +259,15 @@ export function DataTable<Data extends object>({
     page = Math.max(1, Math.min(page, table.getPageCount()));
     table.setPageIndex(page - 1);
   }
+
+  useEffect(() => {
+    if (
+      pageIndexControl !== undefined &&
+      pageIndexControl !== table.getState().pagination.pageIndex
+    ) {
+      table.setPageIndex(pageIndexControl);
+    }
+  }, [pageIndexControl, table]);
 
   return (
     <Flex direction="column" w="full">
